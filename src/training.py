@@ -126,7 +126,7 @@ def trackTime():
     print(f"T+ {delta_str} - ", end='')
     return delta_str
 
-max_iters = 30000
+max_iters = 200000
 for step in range(0, max_iters):
     
     x, y = get_batch('train', max_seq_len, 32) # batch size
