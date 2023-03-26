@@ -79,7 +79,7 @@ max_seq_len = 200
 
 model = gpt.GPT(d_model=32, d_input=d_input, max_seq_len=max_seq_len, N=12)
 try:
-    NAME = "gptv2"
+    NAME = "shakeGPTv1"
     PATH = f"models/{NAME}.pth"
     CHECKPOINT = f"models/checkpoints-{NAME}.pth"
     model.load_state_dict(torch.load(PATH))
@@ -96,7 +96,7 @@ if len(checkpoints) > 0:
 torch.cuda.empty_cache()
 model.to(device)
 
-optimizer = torch.optim.AdamW(model.parameters(), lr=1e-2)
+optimizer = torch.optim.AdamW(model.parameters(), lr=0.00003)
 
 """
 -----------------------------------------------------------------------------------
@@ -105,7 +105,9 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=1e-2)
 """
 
 from torch.utils.tensorboard import SummaryWriter
-writer = SummaryWriter("runs/tinygpt")
+writer = SummaryWriter(f"runs/{NAME}")
+#writer.add_graph(model, get_batch('train', max_seq_len, 1))
+
 from datetime import datetime
 from pytz import timezone
 tz = timezone('EST')
@@ -119,7 +121,7 @@ def trackTime():
     s = delta.seconds - (h*3600 + m*60)
     print(f"T+ {h}:{m}:{s} - ", end='')
 
-max_iters = 3000
+max_iters = 30000
 for step in range(0, max_iters):
     
     x, y = get_batch('train', max_seq_len, 32) # batch size
@@ -130,7 +132,7 @@ for step in range(0, max_iters):
     loss.backward()
     optimizer.step()
 
-    if step % (max_iters // 60) == 0 or step == max_iters-1:
+    if step % (max_iters // 300) == 0 or step == max_iters-1:
         res = estimate_loss()
 
         trackTime()
