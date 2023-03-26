@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+from datetime import datetime
+from pytz import timezone
 
 """
 -----------------------------------------------------------------------------------
@@ -90,8 +92,11 @@ except:
     checkpoints = []
 
 step_offset = 1
+timeoffset = datetime.strptime("0:0:1", '%H:%M:%S') - datetime.strptime("0:0:0", '%H:%M:%S')
+
 if len(checkpoints) > 0:
     step_offset = checkpoints[-1]['step'] + 1
+    timeoffset = datetime.strptime(checkpoints[-1]['T+'], '%H:%M:%S') - datetime.strptime("0:0:0", '%H:%M:%S')
 
 torch.cuda.empty_cache()
 model.to(device)
@@ -108,18 +113,18 @@ from torch.utils.tensorboard import SummaryWriter
 writer = SummaryWriter(f"runs/{NAME}")
 #writer.add_graph(model, get_batch('train', max_seq_len, 1))
 
-from datetime import datetime
-from pytz import timezone
 tz = timezone('EST')
 t_start = datetime.now(tz)
 print(f"Start time: {t_start.strftime('%Y-%m-%d %H:%M:%S')}")
 
 def trackTime():
-    delta = datetime.now(tz) - t_start
+    delta = datetime.now(tz) - t_start + timeoffset
     h = delta.seconds//3600
     m = (delta.seconds//60) % 60
     s = delta.seconds - (h*3600 + m*60)
-    print(f"T+ {h}:{m}:{s} - ", end='')
+    delta_str = f"{h}:{m}:{s}"
+    print(f"T+ {delta_str} - ", end='')
+    return delta_str
 
 max_iters = 30000
 for step in range(0, max_iters):
@@ -135,10 +140,11 @@ for step in range(0, max_iters):
     if step % (max_iters // 300) == 0 or step == max_iters-1:
         res = estimate_loss()
 
-        trackTime()
+        delta = trackTime()
         print(f"step {step+step_offset}/{max_iters+step_offset-1}: train loss {res['train'][0]:.4f}, val loss {res['eval'][0]:.4f}; train acc  {res['train'][1]:.4f}, val acc {res['eval'][1]:.4f}")
 
         checkpoint = {
+            "T+": delta,
             "step": step+step_offset,
             "train_loss": res['train'][0],
             "val_loss": res['eval'][0],
