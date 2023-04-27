@@ -139,7 +139,7 @@ def trackTime(remain_gap=None):
     prev_delta = delta
     return delta_str, projected_remain_time
 
-max_iters = 5000
+max_iters = 2500
 for step in range(0, max_iters):
     
     x, y = get_batch('train', max_seq_len, 64) # batch size
@@ -173,7 +173,12 @@ for step in range(0, max_iters):
         writer.add_scalar('validation acc', res['eval'][1], step+step_offset)
 
         # keep saving the model
-        torch.save(model.state_dict(), PATH)
+        for i in range(3):
+            try:
+                torch.save(model.state_dict(), PATH)
+                break
+            except:
+                print("try saving model again", i)
         checkpoints.append(checkpoint)
         torch.save(checkpoints, CHECKPOINT)
 

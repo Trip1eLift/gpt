@@ -33,10 +33,10 @@ T+ 0:37:46 - step 7270/7270: train loss 1.5866, val loss 1.7531; train acc  0.39
 
 | d_model | d_input | layers | num_heads | dropout | Batch size | max_seq_len | learning rate | total iters | val loss | position function |
 |---------|---------|--------|-----------|---------|------------|-------------|---------------|-------------|----------| ----------------- |
-|     384 |      66 |      6 |         6 |     0.2 |         64 |         256 |       0.00003 |        5000 |   1.8991 |         Embedding |
+|     384 |      66 |      6 |         6 |     0.2 |         64 |         256 |       0.00003 |        7657 |   1.6900 |         Embedding |
 
 Total parameters = 384x66+2x384x256+6(4x384^2+4x384x256+4x384^2)+384x66+256x384 = 9,782,784
 
 ```text
-T+ 0:25:30 - step 5000/5000: train loss 1.7018, val loss 1.8991; train acc  0.3633, val acc 0.3295; t_remain 0:0:00
+T+ 0:40:01 - step 7657/9652: train loss 1.5231, val loss 1.6900; train acc  0.4141, val acc 0.3893; t_remain 0:10:41
 ```
