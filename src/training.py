@@ -77,11 +77,11 @@ def estimate_loss():
 
 import gpt
 
-max_seq_len = 200
+max_seq_len = 256
 
-model = gpt.GPT(d_model=32, d_input=d_input, max_seq_len=max_seq_len, N=12)
+model = gpt.GPT(d_model=384, d_input=d_input, max_seq_len=max_seq_len, N=6, num_heads=6, dropout=0.2, pos_embedding_encode=True)
 try:
-    NAME = "shakeGPTv1"
+    NAME = "shakeGPTv3"
     PATH = f"models/{NAME}.pth"
     CHECKPOINT = f"models/checkpoints-{NAME}.pth"
     model.load_state_dict(torch.load(PATH))
@@ -117,19 +117,32 @@ tz = timezone('EST')
 t_start = datetime.now(tz)
 print(f"Start time: {t_start.strftime('%Y-%m-%d %H:%M:%S')}")
 
-def trackTime():
+prev_delta = None
+def trackTime(remain_gap=None):
+    def timeStr(d):
+        h = d.seconds//3600
+        m = (d.seconds//60) % 60
+        s = d.seconds - (h*3600 + m*60)
+        if s < 10:
+            s = f"0{s}"
+        return f"{h}:{m}:{s}"
     delta = datetime.now(tz) - t_start + timeoffset
-    h = delta.seconds//3600
-    m = (delta.seconds//60) % 60
-    s = delta.seconds - (h*3600 + m*60)
-    delta_str = f"{h}:{m}:{s}"
-    print(f"T+ {delta_str} - ", end='')
-    return delta_str
+    delta_str = timeStr(delta)
 
-max_iters = 200000
+    projected_remain_time = None
+    global prev_delta
+    if prev_delta != None and remain_gap != None:
+        time_past = delta - prev_delta
+        projected_delta = remain_gap * time_past
+        projected_remain_time = timeStr(projected_delta)
+
+    prev_delta = delta
+    return delta_str, projected_remain_time
+
+max_iters = 5000
 for step in range(0, max_iters):
     
-    x, y = get_batch('train', max_seq_len, 32) # batch size
+    x, y = get_batch('train', max_seq_len, 64) # batch size
 
     z, loss = model(x, y)
 
@@ -140,8 +153,10 @@ for step in range(0, max_iters):
     if step % (max_iters // 300) == 0 or step == max_iters-1:
         res = estimate_loss()
 
-        delta = trackTime()
-        print(f"step {step+step_offset}/{max_iters+step_offset-1}: train loss {res['train'][0]:.4f}, val loss {res['eval'][0]:.4f}; train acc  {res['train'][1]:.4f}, val acc {res['eval'][1]:.4f}")
+        gap = max_iters // 300
+        remainGap = (max_iters - step) / gap
+        delta, proj_t = trackTime(remainGap)
+        print(f"T+ {delta} - step {step+step_offset}/{max_iters+step_offset-1}: train loss {res['train'][0]:.4f}, val loss {res['eval'][0]:.4f}; train acc  {res['train'][1]:.4f}, val acc {res['eval'][1]:.4f}; t_remain {proj_t}")
 
         checkpoint = {
             "T+": delta,

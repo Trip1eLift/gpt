@@ -24,26 +24,48 @@ class AddPads(nn.Module):
 
 class EmbedEncode(nn.Module):
     "also multiply the weights by sqrt(d_model) after embedding according to the paper"
-    def __init__(self, d_model=512, d_input=1024, max_seq_len=512, dropout=None):
+    def __init__(self, d_model=512, d_input=1024, max_seq_len=512, dropout=None, pos_embedding_encode=False):
         super(EmbedEncode, self).__init__()
         self.d_model = d_model
         self.max_seq_len = max_seq_len
         self.embedding = nn.Embedding(d_input, d_model)
 
-        self.dropout = nn.Dropout(dropout) if dropout is not None else None
         self.pe = None
+        
+        self.pos_embedding_encode = pos_embedding_encode
+        if pos_embedding_encode:
+            self.pos_embedding = nn.Embedding(max_seq_len, d_model)
+        self.pos_vec = None
+
+        self.dropout = nn.Dropout(dropout) if dropout is not None else None
 
     def forward(self, x):
         # 1. Embedding
+        # x: 1x512
         x = self.embedding(x)            # 1x512x512
         x = x * math.sqrt(self.d_model)  # 1x512x512
 
         # 2. Position Encoding
-        x = x + self.pos_encoding()      # 1x512x512
+        if not self.pos_embedding_encode:
+            ## PE function
+            x = x + self.pos_encoding()  # 1x512x512
+        else:
+            ## Embedding position
+            # 1x512 (max_seq) -> 1x512x512 (max_seq, d_model)
+            x = x + self.pos_embedding(self.pos_vector()) # 1x512x512
+
         if self.dropout is not None:
             x = self.dropout(x)
 
         return x
+    
+    def pos_vector(self):
+        if self.pos_vec is not None:
+            return self.pos_vec
+        
+        device = next(self.parameters()).device
+        self.pos_vec = torch.arange(0, self.max_seq_len).to(device)
+        return self.pos_vec
     
     def pos_encoding(self):
         "PE (pos, 2i)   = sin(pos / 10000^(2i/d_model))" # position is word pos in sequence
@@ -194,12 +216,12 @@ class GPTdecodeLayer(nn.Module):
         return z
     
 class GPT(nn.Module):
-    def __init__(self, d_model=512, d_input=1024, max_seq_len=512, N=6, num_heads=8, eps=1e-5, dropout=0.1):
+    def __init__(self, d_model=512, d_input=1024, max_seq_len=512, N=6, num_heads=8, eps=1e-5, dropout=0.1, pos_embedding_encode=False):
         super(GPT, self).__init__()
         self.d_input = d_input
         self.max_seq_len = max_seq_len
         self.add_pads = AddPads(max_seq_len)                                                          # 1x4       -> 1x512
-        self.embed_encode = EmbedEncode(d_model, d_input, max_seq_len, dropout)                       # 1x512     -> 1x512x512
+        self.embed_encode = EmbedEncode(d_model, d_input, max_seq_len, dropout, pos_embedding_encode) # 1x512     -> 1x512x512
         self.norm = LayerNorm(d_model, max_seq_len, eps)                                              # 1x512x512 -> 1x512x512
         self.decoders = self.clones(GPTdecodeLayer(d_model, max_seq_len, num_heads, eps, dropout), N) # 1x512x512 -> 1x512x512
         self.linear = nn.Linear(d_model, d_input)                                                     # 1x512x512 -> 1x512x1024 (map to output prediction)
